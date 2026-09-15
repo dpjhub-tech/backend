@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: promylink-backend-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-promylink}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-promylink}
+      POSTGRES_DB: ${POSTGRES_DB:-promylink}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - promylink-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-promylink} -d ${POSTGRES_DB:-promylink}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: promylink-backend-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-promylink}:${POSTGRES_PASSWORD:-promylink}@postgres:5432/${POSTGRES_DB:-promylink}?schema=public
+      PORT: 4000
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+    ports:
+      - "4000:4000"
+
+volumes:
+  promylink-postgres-data:

@@ -1,0 +1,27 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const core_1 = require("@nestjs/core");
+const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
+const app_module_1 = require("./app.module");
+async function bootstrap() {
+    const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    const config = app.get(config_1.ConfigService);
+    const corsOrigin = config.get('CORS_ORIGIN', 'http://localhost:3000');
+    app.enableCors({
+        origin: corsOrigin.includes(',')
+            ? corsOrigin.split(',').map((o) => o.trim())
+            : corsOrigin,
+        credentials: true,
+    });
+    app.useGlobalPipes(new common_1.ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+    }));
+    const port = config.get('PORT', 4000);
+    await app.listen(port);
+    console.log(`Promylink backend running on port ${port}`);
+}
+void bootstrap();
+//# sourceMappingURL=main.js.map

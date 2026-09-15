@@ -1,0 +1,277 @@
+// Prisma schema for promylink-backend
+// Target DB: PostgreSQL (Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AppRole {
+  user
+  creator
+  organization
+  business
+  admin
+
+  @@map("app_role")
+}
+
+enum OnboardingStatus {
+  draft
+  under_review
+  approved
+  rejected
+
+  @@map("onboarding_status")
+}
+
+enum GovIdType {
+  aadhaar
+  pan
+
+  @@map("gov_id_type")
+}
+
+enum BusinessType {
+  proprietorship
+  partnership
+  llp
+  private_limited
+  public_limited
+  trust_society_ngo
+  other
+
+  @@map("business_type")
+}
+
+model Profile {
+  id                String    @id @db.Uuid
+  email             String
+  name              String    @default("")
+  role              AppRole   @default(user)
+  username          String?   @unique
+  bio               String?
+  phone             String?
+  designation       String?
+  designationCustom String?   @map("designation_custom")
+  avgRating         Float     @default(0) @map("avg_rating")
+  ratingCount       Int       @default(0) @map("rating_count")
+  avatarUrl         String?   @map("avatar_url")
+  isVerified        Boolean   @default(false) @map("is_verified")
+  walletCredits     Int       @default(0) @map("wallet_credits")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Creator KYC / identity verification
+  govIdType   GovIdType? @map("gov_id_type")
+  govIdDocUrl String?    @map("gov_id_doc_url")
+  govIdStatus String     @default("pending") @map("gov_id_status")
+
+  businessProfile        BusinessProfile?
+  organizationOnboarding OrganizationOnboarding?
+  bookmarks              Bookmark[]
+  posts                  Post[]
+
+  @@map("profiles")
+}
+
+model OrganizationOnboarding {
+  id     String           @id @default(uuid()) @db.Uuid
+  userId String           @unique @map("user_id") @db.Uuid
+  status OnboardingStatus @default(draft)
+
+  // Current active step in the wizard
+  currentStep String @default("business-details") @map("current_step")
+
+  // Unique reference ID generated on submission (e.g. ORG-849201)
+  applicationId String? @unique @map("application_id")
+
+  // Step 2: Business Details
+  organizationName String? @map("organization_name")
+  businessType     String? @map("business_type")
+  industry         String?
+  website          String?
+
+  // Step 3: KYC & Document Identifiers
+  panNumber               String?  @map("pan_number")
+  hasGst                  Boolean  @default(false) @map("has_gst")
+  gstin                   String?
+  hasUdyam                Boolean  @default(false) @map("has_udyam")
+  udyamNumber             String?  @map("udyam_number")
+  secondaryDocType        String?  @map("secondary_doc_type")
+  shopEstablishmentNumber String?  @map("shop_establishment_number")
+  firmRegistrationNumber  String?  @map("firm_registration_number")
+  addressProofType        String?  @map("address_proof_type")
+  bankAccountNumber       String?  @map("bank_account_number")
+  bankIfsc                String?  @map("bank_ifsc")
+  bankName                String?  @map("bank_name")
+
+  // Uploaded documents storage metadata (JSON mapping of doc keys to file details/URLs)
+  documents Json? @default("{}")
+
+  // Step 4: Declaration & Legal Agreement
+  declarationAgreed     Boolean   @default(false) @map("declaration_agreed")
+  declarationAuthorized Boolean   @default(false) @map("declaration_authorized")
+  digitalSignature      String?   @map("digital_signature")
+  declarationSignedAt   DateTime? @map("declaration_signed_at")
+
+  // Step 5: Final Review & Acceptance
+  finalPoliciesAgreed Boolean @default(false) @map("final_policies_agreed")
+
+  // Review & audit timestamps
+  submittedAt DateTime? @map("submitted_at")
+  reviewedAt  DateTime? @map("reviewed_at")
+  reviewNotes String?   @map("review_notes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("organization_onboardings")
+}
+
+model Bookmark {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@map("bookmarks")
+}
+
+model BusinessProfile {
+  id        String @id @default(uuid()) @db.Uuid
+  profileId String @unique @map("profile_id") @db.Uuid
+
+  businessName String       @map("business_name")
+  businessType BusinessType @map("business_type")
+  address      String
+
+  registrationDocUrl String  @map("registration_doc_url")
+  supportingDocUrl   String? @map("supporting_doc_url")
+
+  govIdType   GovIdType @map("gov_id_type")
+  govIdDocUrl String    @map("gov_id_doc_url")
+
+  verificationStatus String @default("pending") @map("verification_status")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("business_profiles")
+}
+
+model Category {
+  id            String         @id @default(uuid()) @db.Uuid
+  name          String
+  slug          String         @unique
+  icon          String         @default("📦")
+  description   String         @default("")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  subcategories Subcategory[]
+  posts         Post[]
+
+  @@map("categories")
+}
+
+model Subcategory {
+  id         String   @id @default(uuid()) @db.Uuid
+  categoryId String   @map("category_id") @db.Uuid
+  name       String
+  slug       String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  posts    Post[]
+
+  @@map("subcategories")
+}
+
+model Post {
+  id                 String    @id @default(uuid()) @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  title              String
+  description        String    @default("")
+  categoryId         String    @map("category_id") @db.Uuid
+  subcategoryId      String    @map("subcategory_id") @db.Uuid
+  linkUrl            String    @map("link_url")
+  promoCode          String?   @map("promo_code")
+  imageUrl           String?   @map("image_url")
+  appIcon            String?   @map("app_icon")
+  bannerUrl          String?   @map("banner_url")
+  targetLocation     String?   @map("target_location")
+  status             String    @default("pending")
+  isVerified         Boolean   @default(false) @map("is_verified")
+  isBoosted          Boolean   @default(false) @map("is_boosted")
+  boostExpiresAt     DateTime? @map("boost_expires_at")
+  creditsRemaining   Int       @default(0) @map("credits_remaining")
+  totalCredits       Int       @default(0) @map("total_credits")
+  clicks             Int       @default(0)
+  views              Int       @default(0)
+  rejectionCount     Int       @default(0) @map("rejection_count")
+  rejectionFeedback  String?   @map("rejection_feedback")
+  actionType         String    @default("visit_website") @map("action_type")
+  keywords           String[]  @default([])
+  gracePeriodEndsAt  DateTime? @map("grace_period_ends_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  expiresAt          DateTime? @map("expires_at")
+
+  category    Category     @relation(fields: [categoryId], references: [id])
+  subcategory Subcategory  @relation(fields: [subcategoryId], references: [id])
+  user        Profile      @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+  bookmarks   Bookmark[]
+
+  @@map("posts")
+}
+
+model SupportTicket {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  subject   String
+  status    String   @default("open")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  messages SupportMessage[]
+
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  ticketId  String   @map("ticket_id") @db.Uuid
+  senderId  String   @map("sender_id") @db.Uuid
+  message   String
+  isStaff   Boolean  @default(false) @map("is_staff")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("support_messages")
+}
+
+model Transaction {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  type      String
+  amount    Decimal  @default(0) @db.Decimal(10, 2)
+  currency  String   @default("USD")
+  status    String   @default("pending")
+  postId    String?  @map("post_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post? @relation(fields: [postId], references: [id])
+
+  @@map("transactions")
+}
