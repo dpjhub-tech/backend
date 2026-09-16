@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { SupabaseModule } from './common/supabase/supabase.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { OrganizationOnboardingModule } from './modules/organization-onboarding/organization-onboarding.module';
+import { StorageModule } from './modules/storage/storage.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { OrganizationOnboardingModule } from './modules/organization-onboarding/
     SupabaseModule,
     ProfileModule,
     OrganizationOnboardingModule,
+    StorageModule,
   ],
   controllers: [AppController],
   providers: [AppService],

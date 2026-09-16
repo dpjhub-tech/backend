@@ -7,4 +7,4 @@ import { OrganizationOnboardingController } from './organization-onboarding.cont
   providers: [OrganizationOnboardingService],
   exports: [OrganizationOnboardingService],
 })
-export class OrganizationOnboardingModule {}
+export class OrganizationOnboardingModule { }
