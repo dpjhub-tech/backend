@@ -56,8 +56,13 @@ export class OrganizationOnboardingService {
     }
 
     if (declarationSignedAt) {
-      data.declarationSignedAt = new Date(declarationSignedAt);
+      const parsed = new Date(declarationSignedAt);
+      data.declarationSignedAt = !isNaN(parsed.getTime()) ? parsed : new Date();
     }
+
+    const initialSignedAt = declarationSignedAt
+      ? (!isNaN(new Date(declarationSignedAt).getTime()) ? new Date(declarationSignedAt) : new Date())
+      : null;
 
     return this.prisma.organizationOnboarding.upsert({
       where: { userId },
@@ -68,9 +73,7 @@ export class OrganizationOnboardingService {
         currentStep: dto.currentStep || 'business-details',
         ...rest,
         documents: documents ? (documents as Prisma.InputJsonValue) : {},
-        declarationSignedAt: declarationSignedAt
-          ? new Date(declarationSignedAt)
-          : null,
+        declarationSignedAt: initialSignedAt,
       },
     });
   }
